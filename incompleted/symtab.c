@@ -353,6 +353,48 @@ void exitBlock(void) {
 
 void declareObject(Object* obj) {
   // TODO: rewrite the function to fill all values of attributes
+  if (obj == NULL) return;
+  Scope* currentScope = symtab->currentScope;
+  if (currentScope == NULL) {
+    addObject(&(symtab->globalObjectList), obj);
+    return;
+  }
+  switch (obj->kind) {
+    case OBJ_VARIABLE:
+      obj->varAttrs->scope = currentScope;
+      obj->varAttrs->localOffset = currentScope->frameSize;
+      currentScope->frameSize += sizeOfType(obj->varAttrs->type);
+      break;
+    case OBJ_PARAMETER:
+      obj->paramAttrs->scope = currentScope;
+      obj->paramAttrs->localOffset = currentScope->frameSize;
+      currentScope->frameSize += sizeOfType(obj->paramAttrs->type);
+      if (currentScope->owner &&
+          (currentScope->owner->kind == OBJ_FUNCTION ||
+           currentScope->owner->kind == OBJ_PROCEDURE)) {
+        ObjectNode** paramList = NULL;
+        int* paramCount = NULL;
+        if (currentScope->owner->kind == OBJ_FUNCTION) {
+          paramList = &currentScope->owner->funcAttrs->paramList;
+          paramCount = &currentScope->owner->funcAttrs->paramCount;
+        } else {
+          paramList = &currentScope->owner->procAttrs->paramList;
+          paramCount = &currentScope->owner->procAttrs->paramCount;
+        }
+        addObject(paramList, obj);
+        (*paramCount)++;
+      }
+      break;
+    case OBJ_FUNCTION:
+      obj->funcAttrs->scope->outer = currentScope;
+      break;
+    case OBJ_PROCEDURE:
+      obj->procAttrs->scope->outer = currentScope;
+      break;
+    default:
+      break; 
+  }
+  addObject(&(currentScope->objList), obj);
 }
 
 
